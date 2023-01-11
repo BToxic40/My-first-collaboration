@@ -13,9 +13,7 @@ import ru.skillbox.repository.FriendsRepository;
 import ru.skillbox.request.settings.NotificationInputDto;
 import ru.skillbox.response.data.PersonDto;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 @AllArgsConstructor
@@ -25,6 +23,23 @@ public class FriendsService {
     private final PersonService personService;
     private final NotificationsService notificationsService;
 
+    public List<Long> getByCodePersonIdsForCurrentUser(StatusCode code) {
+        long id = personService.getCurrentPerson().getId();
+        Optional<List<Friendship>> friendsOptional = friendsRepository
+                .findAllBySrcPersonIdOrDstPersonId(id, id);
+        Set<Long> ids = new HashSet<>();
+        ids.add(id);
+        if (friendsOptional.isPresent()) {
+            List<Friendship> friendshipList = friendsOptional.get();
+            for (Friendship friendship : friendshipList) {
+                if (friendship.getStatusCode().equals(code)) {
+                    ids.add(friendship.getDstPerson().getId());
+                    ids.add(friendship.getSrcPerson().getId());
+                }
+            }
+        }
+        return new ArrayList<>(ids);
+    }
 
     //Отношения по коду
     public List<PersonDto> getRelationsForByCode(Long personId, StatusCode statusCode) {
