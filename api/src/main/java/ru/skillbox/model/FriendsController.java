@@ -4,6 +4,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.skillbox.common.SearchPersonDto;
+import ru.skillbox.response.Responsable;
 import ru.skillbox.response.data.PersonDto;
 
 @CrossOrigin
@@ -15,19 +16,19 @@ public interface FriendsController {
     ResponseEntity<Page<PersonDto>> getRelationships(SearchPersonDto dto);
 
     @PostMapping(value = "/{id}/request")
-    ResponseEntity<String> sendFriendRequest(@PathVariable Long id);
+    ResponseEntity<Responsable> sendFriendRequest(@PathVariable Long id);
 
     @PutMapping(value = "/{id}/approve")
-    ResponseEntity<String> approveFriendRequest(@PathVariable Long id);
+    ResponseEntity<Responsable> approveFriendRequest(@PathVariable Long id);
 
     @DeleteMapping(value = "/{id}")
-    ResponseEntity<String> deleteFriend(@PathVariable Long id);
+    ResponseEntity<Responsable> deleteFriend(@PathVariable Long id);
 
     @PostMapping("/subscribe/{id}")
-    ResponseEntity<String> subscribe(@PathVariable Long id) ;
+    ResponseEntity<Responsable> subscribe(@PathVariable Long id) ;
 
     @PutMapping("/block/{id}")
-    ResponseEntity<String> block(@PathVariable Long id) ;
+    ResponseEntity<Responsable> block(@PathVariable Long id) ;
 
     @GetMapping("/recommendations")
     ResponseEntity<Object> recommendations();

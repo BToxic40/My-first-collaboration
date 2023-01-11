@@ -13,6 +13,7 @@ import ru.skillbox.exception.UserNotFoundException;
 import ru.skillbox.model.FriendsController;
 import ru.skillbox.model.User;
 import ru.skillbox.response.ErrorResponse;
+import ru.skillbox.response.Responsable;
 import ru.skillbox.response.data.PersonDto;
 import ru.skillbox.service.FriendsService;
 import ru.skillbox.service.SearchService;
@@ -40,70 +41,77 @@ public class FriendsControllerImpl implements FriendsController {
     }
 
     @Override
-    public ResponseEntity<String> sendFriendRequest(Long id) {
+    public ResponseEntity<Responsable> sendFriendRequest(Long id) {
         Long currentUser = userService.getCurrentUser().getId();
         log.debug("user = {} sending request to = {}", currentUser, id);
         try {
+            friendsService
+                    .sendFriendRequest(
+                            currentUser,
+                            id);
             return ResponseEntity
-                    .ok(friendsService
-                            .sendFriendRequest(
-                                    currentUser,
-                                    id));
-        } catch (UserNotFoundException e) {
-            log.error("sendFriendRequest throws {}", e.getMessage());
+                    .ok().build();
 
-            //FixMe to smthg better it is not ok! need front rework maybe
-            return ResponseEntity
-                    .ok("Ok");
+        } catch (RuntimeException e) {
+            log.error("sendFriendRequest throws {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new ErrorResponse().getResponse(e.getMessage()));
+
         }
     }
 
     @Override
-    public ResponseEntity<String> approveFriendRequest(Long id) {
+    public ResponseEntity<Responsable> approveFriendRequest(Long id) {
         Long currentUser = userService.getCurrentUser().getId();
         log.info("user = {} approving request to = {}", currentUser, id);
         try {
+            friendsService
+                    .approveFriends(
+                            currentUser,
+                            id);
             return ResponseEntity
-                    .ok(friendsService
-                            .approveFriends(
-                                    currentUser,
-                                    id));
+                    .ok().build();
         } catch (UserNotFoundException e) {
             log.info("approveFriendRequest throws {}", e.getMessage());
-
-            //FixMe to smthg better it is not ok! need front rework maybe
-            return ResponseEntity
-                    .ok("Ok");
+            return ResponseEntity.badRequest().body(new ErrorResponse().getResponse(e.getMessage()));
         }
     }
 
     @Override
-    public ResponseEntity<String> deleteFriend(Long id) {
+    public ResponseEntity<Responsable> deleteFriend(Long id) {
         User currentUser = userService.getCurrentUser();
         log.info("user = {} delete friend = {}", currentUser.getId(), id);
-
-        return ResponseEntity.ok(friendsService.deleteFriend(currentUser.getId(), id));
-    }
-
-    @Override
-    public ResponseEntity<String> subscribe(@PathVariable Long id) {
-        User currentUser = userService.getCurrentUser();
         try {
-            return ResponseEntity.ok(friendsService.subscribe(currentUser.getId(), id));
+            friendsService.deleteFriend(currentUser.getId(), id);
+            return ResponseEntity
+                    .ok().build();
         } catch (UserNotFoundException e) {
-            log.info("subscribe {}", e.getMessage());
-            return ResponseEntity.ok("Ok");
+            return ResponseEntity.badRequest().body(new ErrorResponse().getResponse(e.getMessage()));
         }
     }
 
     @Override
-    public ResponseEntity<String> block(Long id) {
+    public ResponseEntity<Responsable> subscribe(@PathVariable Long id) {
         User currentUser = userService.getCurrentUser();
         try {
-            return ResponseEntity.ok(friendsService.blockFriend(currentUser.getId(), id));
+            friendsService.subscribe(currentUser.getId(), id);
+            return ResponseEntity
+                    .ok().build();
+        } catch (UserNotFoundException e) {
+            log.info("subscribe {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new ErrorResponse().getResponse(e.getMessage()));
+        }
+    }
+
+    @Override
+    public ResponseEntity<Responsable> block(Long id) {
+        User currentUser = userService.getCurrentUser();
+        try {
+            friendsService.blockFriend(currentUser.getId(), id);
+            return ResponseEntity
+                    .ok().build();
         } catch (UserNotFoundException e) {
             log.info("block {}", e.getMessage());
-            return ResponseEntity.ok("Ok");
+            return ResponseEntity.badRequest().body(new ErrorResponse().getResponse(e.getMessage()));
         }
     }
 
@@ -121,4 +129,5 @@ public class FriendsControllerImpl implements FriendsController {
         return friendsService
                 .getFriendsRequestsCountFor(userService.getCurrentUser().getId());
     }
+
 }

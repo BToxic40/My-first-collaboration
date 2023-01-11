@@ -9,12 +9,13 @@ import ru.skillbox.exception.BadRequestException;
 import ru.skillbox.exception.UserNotFoundException;
 import ru.skillbox.model.Friendship;
 import ru.skillbox.model.Person;
-import ru.skillbox.model.User;
 import ru.skillbox.repository.FriendsRepository;
 import ru.skillbox.request.settings.NotificationInputDto;
 import ru.skillbox.response.data.PersonDto;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -24,33 +25,15 @@ public class FriendsService {
     private final PersonService personService;
     private final NotificationsService notificationsService;
 
-    //For Andrew
-    public List<Long> getByCodePersonIdsForCurrentUser(StatusCode code) {
-        long id = personService.getCurrentPerson().getId();
-        Optional<List<Friendship>> friendsOptional = friendsRepository
-                .findAllBySrcPersonIdOrDstPersonId(id, id);
-        Set<Long> ids = new HashSet<>();
-        ids.add(id);
-        if (friendsOptional.isPresent()) {
-            List<Friendship> friendshipList = friendsOptional.get();
-            for (Friendship friendship : friendshipList) {
-                if (friendship.getStatusCode().equals(code)) {
-                    ids.add(friendship.getDstPerson().getId());
-                    ids.add(friendship.getSrcPerson().getId());
-                }
-            }
-        }
-        return new ArrayList<>(ids);
-    }
 
-
+    //Отношения по коду
     public List<PersonDto> getRelationsForByCode(Long personId, StatusCode statusCode) {
         Optional<List<Friendship>> allByStatusCodeAndSrcPersonId =
                 friendsRepository.findAllByStatusCodeAndSrcPersonId(statusCode, personId);
         ArrayList<PersonDto> result = new ArrayList<>();
         if (allByStatusCodeAndSrcPersonId.isPresent()) {
             PersonDto.PersonDtoBuilder builder = PersonDto.builder();
-            List<Friendship> friendships = allByStatusCodeAndSrcPersonId.get(); //FixMe make pagination
+            List<Friendship> friendships = allByStatusCodeAndSrcPersonId.get();
             Person dstPerson;
             for (Friendship fr : friendships) {
                 dstPerson = fr.getDstPerson();
@@ -63,7 +46,6 @@ public class FriendsService {
                                 .lastName(dstPerson.getLastName())
                                 .birthDate(dstPerson.getBirthDate())
                                 .isOnline(dstPerson.getIsOnline())
-                                //FixMe make normal
                                 .city("dstPerson.getCity().toString()")
                                 .country("dstPerson.getCountry().toString()")
                                 .build());
@@ -74,8 +56,8 @@ public class FriendsService {
         return result;
     }
 
-    //ToDo make logic to sending request "from other to current" person. some kind of approve
-    public String sendFriendRequest(Long currentUser, Long otherPersonId) throws UserNotFoundException {
+    //Запрос в друзья
+    public void sendFriendRequest(Long currentUser, Long otherPersonId) throws UserNotFoundException {
         Optional<Friendship> friendship =
                 friendsRepository.findBySrcPersonIdAndDstPersonId(currentUser, otherPersonId);
         if (friendship.isPresent() && friendship.get().getStatusCode() == StatusCode.FRIEND) {
@@ -103,13 +85,11 @@ public class FriendsService {
                 sendNotification(currentUser, otherPersonId);
 
                 log.debug("friendship saved {}", fr);
-            } else {
-
             }
         }
-        return "Ok";
     }
 
+    //Уведомления
     private void sendNotification(Long currentUser, Long otherPersonId) {
         NotificationInputDto notificationInputDto = new NotificationInputDto();
         notificationInputDto.setAuthorId(currentUser);
@@ -119,19 +99,15 @@ public class FriendsService {
         notificationsService.createAndSaveNotification(notificationInputDto);
     }
 
+    //Кол-во запросов в друзья
     public int getFriendsRequestsCountFor(Long personId) {
         Optional<List<Friendship>> optionalList = friendsRepository
                 .findAllByStatusCodeLikeAndDstPersonId(StatusCode.REQUEST_TO, personId);
-        if (optionalList.isPresent()) {
-            return optionalList.get().size();
-        } else {
-            return 0;
-        }
-
-
+        return optionalList.map(List::size).orElse(0);
     }
 
-    public String approveFriends(Long currentUser, Long otherPersonId) throws UserNotFoundException {
+    //Подтверждение дружбы
+    public void approveFriends(Long currentUser, Long otherPersonId) throws UserNotFoundException {
         Optional<Friendship> requestedFriendship = friendsRepository
                 .findByDstPersonIdAndSrcPersonIdAndStatusCodeIs(currentUser, otherPersonId, StatusCode.REQUEST_TO);
         Optional<Friendship> alternativeFriendship = friendsRepository
@@ -146,12 +122,11 @@ public class FriendsService {
             returnedFriendship.setDstPerson(fr.getSrcPerson());
             returnedFriendship.setStatusCode(StatusCode.FRIEND);
             friendsRepository.save(returnedFriendship);
-
         }
-        return "Ok";
     }
 
-    public String deleteFriend(Long currentUser, Long otherPersonId) {
+    //Удаление друзей
+    public void deleteFriend(Long currentUser, Long otherPersonId) {
         Optional<Friendship> fr = friendsRepository.findBySrcPersonIdAndDstPersonId(currentUser, otherPersonId);
         Optional<Friendship> fr2 = friendsRepository.findBySrcPersonIdAndDstPersonId(otherPersonId, currentUser);
         if (fr.isPresent() && fr2.isPresent()) {
@@ -170,10 +145,10 @@ public class FriendsService {
             log.debug("friendship not present = {}, {}",
                     currentUser, otherPersonId);
         }
-        return "Ok";
     }
 
-    public String subscribe(Long currentUserId, Long otherPersonId) throws UserNotFoundException {
+    //Подписки
+    public void subscribe(Long currentUserId, Long otherPersonId) throws UserNotFoundException {
         Person currentPerson = personService.getPersonById(currentUserId);
         Person otherPerson = personService.getPersonById(otherPersonId);
         Friendship f = new Friendship();
@@ -181,10 +156,10 @@ public class FriendsService {
         f.setSrcPerson(currentPerson);
         f.setStatusCode(StatusCode.SUBSCRIBED);
         friendsRepository.save(f);
-        return "Ok";
     }
 
-    public String blockFriend(Long currentUserId, Long otherPersonId) throws UserNotFoundException {
+    //Блокировка друзей
+    public void blockFriend(Long currentUserId, Long otherPersonId) throws UserNotFoundException {
         log.info("start blockFriend: currentUser={}, to block={}", currentUserId, otherPersonId);
 
         if (currentUserId.equals(otherPersonId)) {
@@ -216,16 +191,5 @@ public class FriendsService {
             log.info("finish blockFriend: currentUser={}, to block={}", currentUserId, otherPersonId);
 
         }
-        return "Ok";
-    }
-
-    public Object searchRecommendations(User currentUser) {
-        log.info("start searchRecommendations");
-
-
-        log.info("finish searchRecommendations");
-
-        return null;
-
     }
 }

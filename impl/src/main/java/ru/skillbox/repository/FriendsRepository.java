@@ -22,16 +22,5 @@ public interface FriendsRepository extends JpaRepository<Friendship, Integer>, J
     Optional<Friendship> findByDstPersonIdAndSrcPersonIdAndStatusCodeIs(Long currentUser, Long otherPersonId, StatusCode code);
 
     Optional<List<Friendship>> findAllByStatusCodeLikeAndDstPersonId(StatusCode code, Long id);
-/*
 
-    @Query(value = "SELECT * FROM friendship\n" +
-            "WHERE status = 'REQUEST_TO'\n" +
-            "AND dst_person_id = ?1;", nativeQuery = true)
-    List<Friendship> findRequestToFriendshipToUserId(long id);
-
-    @Query(value = "SELECT * FROM friendship\n" +
-            "WHERE status = 'BLOCKED'\n" +
-            "AND src_person_id = ?1;", nativeQuery = true)
-    List<Friendship> findBlockedFriendshipForUserId(long id);
-*/
 }
